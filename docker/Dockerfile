@@ -15,7 +15,7 @@ USER appuser
 COPY server/package*.json ./
 
 # Установка зависимостей
-RUN npm ci --only=production
+RUN npm install --production
 
 # Копирование исходного кода (может быть изменено для отдельных клиентского и серверного Dockerfile)
 COPY server/ ./
