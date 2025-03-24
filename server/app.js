@@ -4,10 +4,12 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
 
 // Импорт маршрутов
 const sheetRoutes = require('./routes/sheetsRoutes');
 const userRoutes = require('./routes/userRoutes');
+const shipmentRoutes = require('./routes/shipmentRoutes');
 
 // Подключение к базе данных
 const db = require('./config/db');
@@ -36,12 +38,26 @@ app.use(express.urlencoded({ extended: true }));
 
 // Настройка статических файлов для production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
+  const clientPath = path.join(__dirname, './client/build');
+  console.log(`Проверка пути клиентской сборки: ${clientPath}`);
+  
+  try {
+    // Проверка наличия директории client/build
+    if (fs.existsSync(clientPath)) {
+      app.use(express.static(clientPath));
+      console.log('Статические файлы подключены успешно');
+    } else {
+      console.error(`Директория ${clientPath} не найдена. Статические файлы не будут обслуживаться.`);
+    }
+  } catch (error) {
+    console.error('Ошибка при настройке статических файлов:', error);
+  }
 }
 
 // Маршруты API
 app.use('/api/sheets', sheetRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/shipments', shipmentRoutes);
 
 // Объект для хранения активных соединений и состояний документов
 const connectedUsers = {};
@@ -187,7 +203,21 @@ io.on('connection', (socket) => {
 // Маршрут для SPA в production
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/build/index.html'));
+    const indexPath = path.join(__dirname, './client/build/index.html');
+    
+    try {
+      // Проверка наличия файла index.html
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).json({ 
+          error: 'Файл index.html не найден. Возможно, клиентская часть не была собрана.' 
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка при отправке файла index.html:', error);
+      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    }
   });
 }
 
